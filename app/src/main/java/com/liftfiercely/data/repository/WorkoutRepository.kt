@@ -15,8 +15,8 @@ class WorkoutRepository(
 ) {
     
     // Workout operations
-    suspend fun startWorkout(): Long {
-        val workout = Workout()
+    suspend fun startWorkout(bodyWeight: Double = 0.0): Long {
+        val workout = Workout(bodyWeight = bodyWeight)
         return workoutDao.insertWorkout(workout)
     }
     
@@ -58,6 +58,10 @@ class WorkoutRepository(
     
     suspend fun deleteWorkout(workoutId: Long) {
         workoutDao.deleteWorkout(workoutId)
+    }
+    
+    suspend fun updateWorkoutDate(workoutId: Long, newStartTime: Long, newEndTime: Long?) {
+        workoutDao.updateWorkoutDate(workoutId, newStartTime, newEndTime)
     }
     
     // Set operations
@@ -220,6 +224,63 @@ class WorkoutRepository(
     
     suspend fun getWorkoutsInRange(startTime: Long, endTime: Long): List<Workout> {
         return workoutDao.getWorkoutsInRange(startTime, endTime)
+    }
+    
+    suspend fun getWorkoutsWithSetsInRange(startTime: Long, endTime: Long): List<WorkoutWithSets> {
+        return workoutDao.getWorkoutsWithSetsInRange(startTime, endTime)
+    }
+    
+    // Calculate workout streak (resets only if 3 consecutive days are missed)
+    suspend fun calculateStreak(): Int {
+        val workouts = workoutDao.getAllCompletedWorkouts()
+        if (workouts.isEmpty()) return 0
+        
+        // Get unique workout dates (day precision)
+        val workoutDates = workouts.map { workout ->
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = workout.startTime
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+            cal.set(java.util.Calendar.MINUTE, 0)
+            cal.set(java.util.Calendar.SECOND, 0)
+            cal.set(java.util.Calendar.MILLISECOND, 0)
+            cal.timeInMillis
+        }.toSet().sortedDescending()
+        
+        if (workoutDates.isEmpty()) return 0
+        
+        val today = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        
+        val oneDayMs = 24 * 60 * 60 * 1000L
+        
+        // Check if most recent workout is within 3 days of today
+        val mostRecentWorkout = workoutDates.first()
+        val daysSinceLast = ((today - mostRecentWorkout) / oneDayMs).toInt()
+        if (daysSinceLast > 3) return 0
+        
+        // Count streak: streak continues as long as gaps are <= 2 days
+        var streak = 1
+        var previousDate = workoutDates.first()
+        
+        for (i in 1 until workoutDates.size) {
+            val currentDate = workoutDates[i]
+            val dayGap = ((previousDate - currentDate) / oneDayMs).toInt()
+            
+            if (dayGap <= 3) {
+                // Gap of 3 days or less (allowing 2 rest days) - continue streak
+                streak++
+                previousDate = currentDate
+            } else {
+                // Gap too large, streak broken
+                break
+            }
+        }
+        
+        return streak
     }
     
     // Get PRs achieved in a date range

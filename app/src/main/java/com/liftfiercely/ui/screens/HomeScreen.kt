@@ -1,5 +1,6 @@
 package com.liftfiercely.ui.screens
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,30 +30,38 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liftfiercely.data.model.Exercise
@@ -61,24 +69,29 @@ import com.liftfiercely.data.model.WorkoutWithSets
 import com.liftfiercely.ui.theme.CoralPrimary
 import com.liftfiercely.ui.theme.DangerRed
 import com.liftfiercely.ui.theme.PullColor
-import com.liftfiercely.ui.theme.getCategoryColor
 import com.liftfiercely.viewmodel.HomeViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    isDarkTheme: Boolean = false,
-    onThemeToggle: () -> Unit = {},
     onStartWorkout: (Long) -> Unit,
     onWorkoutClick: (Long) -> Unit,
     onContinueWorkout: (Long) -> Unit,
     onWeightReferenceClick: () -> Unit,
-    onCalendarClick: () -> Unit = {}
+    onCalendarClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    
+    // State for delete confirmation dialog
+    var workoutToDelete by remember { mutableStateOf<WorkoutWithSets?>(null) }
     
     Box(
         modifier = Modifier
@@ -93,7 +106,7 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Header with personal records icon
+            // Header with icons (no backgrounds)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -115,54 +128,37 @@ fun HomeScreen(
                 }
                 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Calendar Button
-                    Surface(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable(onClick = onCalendarClick),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.CalendarMonth,
-                                contentDescription = "Workout Calendar",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                    // Calendar Icon (no background)
+                    IconButton(onClick = onCalendarClick) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = "Workout Calendar",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                     
-                    // Personal Records Button
-                    Surface(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable(onClick = onWeightReferenceClick),
-                        color = Color(0xFFFFD700).copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.EmojiEvents,
-                                contentDescription = "Personal Records",
-                                tint = Color(0xFFFFD700),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "PRs",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color(0xFFB8860B),
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
+                    // Trophy Icon for PRs (no background, just icon)
+                    IconButton(onClick = onWeightReferenceClick) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = "Personal Records",
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    
+                    // Settings Icon (no background)
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
@@ -214,13 +210,94 @@ fun HomeScreen(
                         items = uiState.recentWorkouts,
                         key = { _, workout -> workout.workout.id }
                     ) { index, workoutWithSets ->
-                        WorkoutHistoryCard(
-                            workoutWithSets = workoutWithSets,
-                            onClick = { onWorkoutClick(workoutWithSets.workout.id) },
-                            onDelete = { viewModel.deleteWorkout(workoutWithSets.workout.id) },
-                            animationDelay = index * 50
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { dismissValue ->
+                                if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
+                                    workoutToDelete = workoutWithSets
+                                    false // Don't actually dismiss, wait for confirmation
+                                } else {
+                                    false
+                                }
+                            }
+                        )
+                        
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            backgroundContent = {
+                                // Only show background when swiping
+                                val isSwipingToDelete = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart
+                                if (isSwipingToDelete) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                DangerRed,
+                                                RoundedCornerShape(12.dp)
+                                            )
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            enableDismissFromStartToEnd = false,
+                            enableDismissFromEndToStart = true,
+                            content = {
+                                WorkoutHistoryCard(
+                                    workoutWithSets = workoutWithSets,
+                                    onClick = { onWorkoutClick(workoutWithSets.workout.id) },
+                                    onShare = {
+                                        coroutineScope.launch {
+                                            val shareContent = viewModel.generateShareContent(workoutWithSets)
+                                            val sendIntent = Intent().apply {
+                                                action = Intent.ACTION_SEND
+                                                putExtra(Intent.EXTRA_TEXT, shareContent.text)
+                                                type = "text/plain"
+                                            }
+                                            val shareIntent = Intent.createChooser(sendIntent, "Share Workout")
+                                            context.startActivity(shareIntent)
+                                        }
+                                    },
+                                    animationDelay = index * 50
+                                )
+                            }
                         )
                     }
+                }
+                
+                // Delete Confirmation Dialog
+                workoutToDelete?.let { workout ->
+                    AlertDialog(
+                        onDismissRequest = { workoutToDelete = null },
+                        title = { Text("Delete Workout?") },
+                        text = { 
+                            Text("This will permanently delete this workout and all its sets.") 
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    viewModel.deleteWorkout(workout.workout.id)
+                                    workoutToDelete = null
+                                }
+                            ) {
+                                Text(
+                                    "Delete",
+                                    color = DangerRed
+                                )
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { workoutToDelete = null }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
                 }
             } else if (!uiState.isLoading) {
                 // Empty state
@@ -262,41 +339,6 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = CoralPrimary)
-                }
-            }
-        }
-        
-        // Theme Toggle at Bottom
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 20.dp)
-        ) {
-            Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .clickable(onClick = onThemeToggle),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-                shape = RoundedCornerShape(24.dp),
-                shadowElevation = 4.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                        contentDescription = if (isDarkTheme) "Switch to Light Mode" else "Switch to Dark Mode",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isDarkTheme) "Light" else "Dark",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }
@@ -395,7 +437,7 @@ private fun ActiveWorkoutBanner(
 private fun WorkoutHistoryCard(
     workoutWithSets: WorkoutWithSets,
     onClick: () -> Unit,
-    onDelete: () -> Unit,
+    onShare: () -> Unit,
     animationDelay: Int
 ) {
     val workout = workoutWithSets.workout
@@ -464,11 +506,11 @@ private fun WorkoutHistoryCard(
                 }
             }
             
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = onShare) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete workout",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share workout",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }

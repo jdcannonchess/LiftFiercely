@@ -1,34 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    
-    <!-- Background circle with gradient effect -->
-    <path
-        android:fillColor="#FF6B35"
-        android:pathData="M54,54m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0"/>
-    
-    <!-- Dumbbell bar -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M34,52h40v4h-40z"/>
-    
-    <!-- Left weight plate -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M30,44h8v20h-8z"/>
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M26,47h4v14h-4z"/>
-    
-    <!-- Right weight plate -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M70,44h8v20h-8z"/>
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M78,47h4v14h-4z"/>
-</vector>
-
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_launcher_logo"
+    android:gravity="center" />

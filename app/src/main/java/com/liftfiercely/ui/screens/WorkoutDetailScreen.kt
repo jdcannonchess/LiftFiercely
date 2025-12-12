@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Scale
 import androidx.compose.material.icons.filled.Schedule
@@ -33,17 +35,24 @@ import java.util.Locale as JavaLocale
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,21 +62,79 @@ import com.liftfiercely.ui.theme.CoralPrimary
 import com.liftfiercely.ui.theme.getCategoryColor
 import com.liftfiercely.viewmodel.WorkoutDetailViewModel
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutDetailScreen(
     viewModel: WorkoutDetailViewModel,
     onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showDatePicker by remember { mutableStateOf(false) }
+    
+    // Date picker state - use workout ID as key to recreate when viewing different workout
+    // and update selection when date changes
+    val workoutStartTime = uiState.workout?.startTime
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = workoutStartTime
+    )
+    
+    // Date picker dialog
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedDateUtc ->
+                            // The DatePicker returns UTC midnight for the selected date
+                            // We need to extract year/month/day and combine with original time
+                            val originalTime = uiState.workout?.startTime ?: System.currentTimeMillis()
+                            val originalCalendar = Calendar.getInstance().apply {
+                                timeInMillis = originalTime
+                            }
+                            
+                            // Parse the selected UTC date to get year/month/day
+                            val utcCalendar = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                                timeInMillis = selectedDateUtc
+                            }
+                            
+                            // Create new date with selected year/month/day but original time
+                            val newCalendar = Calendar.getInstance().apply {
+                                set(Calendar.YEAR, utcCalendar.get(Calendar.YEAR))
+                                set(Calendar.MONTH, utcCalendar.get(Calendar.MONTH))
+                                set(Calendar.DAY_OF_MONTH, utcCalendar.get(Calendar.DAY_OF_MONTH))
+                                set(Calendar.HOUR_OF_DAY, originalCalendar.get(Calendar.HOUR_OF_DAY))
+                                set(Calendar.MINUTE, originalCalendar.get(Calendar.MINUTE))
+                                set(Calendar.SECOND, originalCalendar.get(Calendar.SECOND))
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            viewModel.updateWorkoutDate(newCalendar.timeInMillis)
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
     
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-MaterialTheme.colorScheme.background
+                MaterialTheme.colorScheme.background
             )
     ) {
         if (uiState.isLoading) {
@@ -118,7 +185,8 @@ MaterialTheme.colorScheme.background
                                 duration = workout.getDurationMinutes(),
                                 totalSets = uiState.sets.size,
                                 totalExercises = uiState.sets.map { it.exerciseId }.distinct().size,
-                                totalWeightLifted = uiState.totalWeightLifted
+                                totalWeightLifted = uiState.totalWeightLifted,
+                                onEditDate = { showDatePicker = true }
                             )
                         }
                         
@@ -187,7 +255,8 @@ private fun WorkoutSummaryCard(
     duration: Long?,
     totalSets: Int,
     totalExercises: Int,
-    totalWeightLifted: Double
+    totalWeightLifted: Double,
+    onEditDate: () -> Unit
 ) {
     val numberFormat = NumberFormat.getNumberInstance(JavaLocale.getDefault())
     
@@ -203,10 +272,10 @@ private fun WorkoutSummaryCard(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = date,
                         style = MaterialTheme.typography.headlineSmall,
@@ -218,6 +287,19 @@ private fun WorkoutSummaryCard(
                         text = time,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                // Fixed space for edit button
+                IconButton(
+                    onClick = onEditDate,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit date",
+                        tint = CoralPrimary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -486,7 +568,7 @@ private fun SetDetailRow(
 }
 
 private fun formatFullDate(timestamp: Long): String {
-    val dateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
     return dateFormat.format(Date(timestamp))
 }
 

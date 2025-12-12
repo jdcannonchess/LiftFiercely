@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.liftfiercely.app-mergeDebugResources-54:/values-v21/values-v21.xml",
+            "outputFile": "com.liftfiercely.app-mergeDebugResources-56:/values-v21/values-v21.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\jdcan\\.gradle\\caches\\8.13\\transforms\\ee0642c062276f6ed9a7821ba0138f89\\transformed\\core-1.12.0\\res\\values-v21\\values-v21.xml",
+                    "source": "C:\\Users\\jdcan\\.gradle\\caches\\9.0-milestone-1\\transforms\\59a5a57483e17bae7e9d54b37c625cda\\transformed\\core-1.12.0\\res\\values-v21\\values-v21.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,13",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4",

@@ -14,6 +14,7 @@ import com.liftfiercely.data.repository.WorkoutRepository
 import com.liftfiercely.ui.screens.ActiveWorkoutScreen
 import com.liftfiercely.ui.screens.CalendarScreen
 import com.liftfiercely.ui.screens.HomeScreen
+import com.liftfiercely.ui.screens.SettingsScreen
 import com.liftfiercely.ui.screens.WeightReferenceScreen
 import com.liftfiercely.ui.screens.WorkoutDetailScreen
 import com.liftfiercely.viewmodel.ActiveWorkoutViewModel
@@ -34,6 +35,7 @@ fun LiftFiercelyNavHost(
         app.database.workoutDao(),
         app.database.workoutSetDao()
     )
+    val settingsDataStore = app.settingsDataStore
     
     NavHost(
         navController = navController,
@@ -41,12 +43,10 @@ fun LiftFiercelyNavHost(
     ) {
         composable(NavRoutes.Home.route) {
             val viewModel: HomeViewModel = viewModel(
-                factory = HomeViewModel.Factory(repository)
+                factory = HomeViewModel.Factory(repository, settingsDataStore)
             )
             HomeScreen(
                 viewModel = viewModel,
-                isDarkTheme = isDarkTheme,
-                onThemeToggle = onThemeToggle,
                 onStartWorkout = { workoutId ->
                     navController.navigate(NavRoutes.ActiveWorkout.createRoute(workoutId))
                 },
@@ -61,6 +61,9 @@ fun LiftFiercelyNavHost(
                 },
                 onCalendarClick = {
                     navController.navigate(NavRoutes.Calendar.route)
+                },
+                onSettingsClick = {
+                    navController.navigate(NavRoutes.Settings.route)
                 }
             )
         }
@@ -87,7 +90,7 @@ fun LiftFiercelyNavHost(
         ) { backStackEntry ->
             val workoutId = backStackEntry.arguments?.getLong("workoutId") ?: return@composable
             val viewModel: WorkoutDetailViewModel = viewModel(
-                factory = WorkoutDetailViewModel.Factory(repository, workoutId)
+                factory = WorkoutDetailViewModel.Factory(repository, workoutId, settingsDataStore)
             )
             WorkoutDetailScreen(
                 viewModel = viewModel,
@@ -107,10 +110,19 @@ fun LiftFiercelyNavHost(
         
         composable(NavRoutes.Calendar.route) {
             val viewModel: CalendarViewModel = viewModel(
-                factory = CalendarViewModel.Factory(repository)
+                factory = CalendarViewModel.Factory(repository, settingsDataStore)
             )
             CalendarScreen(
                 viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable(NavRoutes.Settings.route) {
+            SettingsScreen(
+                settingsDataStore = settingsDataStore,
+                isDarkTheme = isDarkTheme,
+                onThemeToggle = { onThemeToggle() },
                 onBack = { navController.popBackStack() }
             )
         }

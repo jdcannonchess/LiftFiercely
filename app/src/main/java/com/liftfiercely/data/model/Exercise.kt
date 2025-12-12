@@ -5,7 +5,8 @@ data class Exercise(
     val name: String,
     val category: ExerciseCategory,
     val defaultWeight: Double,
-    val isAssisted: Boolean = false
+    val isAssisted: Boolean = false,
+    val weightIncrement: Double = 5.0
 ) {
     companion object {
         val ALL_EXERCISES = listOf(
@@ -23,9 +24,9 @@ data class Exercise(
             Exercise("assisted_dip", "Assisted Dip", ExerciseCategory.PUSH, defaultWeight = 65.0, isAssisted = true),
             
             // Other exercises
-            Exercise("lu_raise", "LU Raise", ExerciseCategory.OTHER, defaultWeight = 20.0),
-            Exercise("barbell_curl", "Barbell Curl", ExerciseCategory.OTHER, defaultWeight = 80.0),
-            Exercise("skull_crusher", "Skull Crusher", ExerciseCategory.OTHER, defaultWeight = 90.0)
+            Exercise("lu_raise", "LU Raise", ExerciseCategory.OTHER, defaultWeight = 20.0, weightIncrement = 2.5),
+            Exercise("barbell_curl", "Barbell Curl", ExerciseCategory.OTHER, defaultWeight = 80.0, weightIncrement = 10.0),
+            Exercise("skull_crusher", "Skull Crusher", ExerciseCategory.OTHER, defaultWeight = 90.0, weightIncrement = 10.0)
         )
         
         fun getByCategory(category: ExerciseCategory): List<Exercise> {

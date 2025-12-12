@@ -3,6 +3,7 @@ package com.liftfiercely.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.liftfiercely.data.SettingsDataStore
 import com.liftfiercely.data.model.Exercise
 import com.liftfiercely.data.model.Workout
 import com.liftfiercely.data.model.WorkoutSet
@@ -27,7 +28,8 @@ data class WorkoutDetailUiState(
 
 class WorkoutDetailViewModel(
     private val repository: WorkoutRepository,
-    private val workoutId: Long
+    private val workoutId: Long,
+    private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(WorkoutDetailUiState())
@@ -39,17 +41,37 @@ class WorkoutDetailViewModel(
     
     private fun loadWorkout() {
         viewModelScope.launch {
+            // Get current body weight from settings as fallback for old workouts
+            val settingsBodyWeight = settingsDataStore.getBodyWeightOnce()
+            
             repository.getWorkoutWithSetsFlow(workoutId).collect { workoutWithSets ->
+                val workout = workoutWithSets?.workout
                 val sets = workoutWithSets?.sets ?: emptyList()
                 
-                // Calculate total weight lifted (reps × weight for each set)
-                val totalWeight = sets.sumOf { it.reps * it.weight }
+                // Use stored body weight if available, otherwise fallback to settings
+                val bodyWeight = if (workout != null && workout.bodyWeight > 0) {
+                    workout.bodyWeight
+                } else {
+                    settingsBodyWeight
+                }
+                
+                // Calculate total weight lifted with true weight for assisted exercises
+                val totalWeight = sets.sumOf { set ->
+                    val exercise = Exercise.getById(set.exerciseId)
+                    val actualWeight = if (exercise?.isAssisted == true && bodyWeight > 0) {
+                        // For assisted exercises: body weight minus assistance = actual weight lifted
+                        (bodyWeight - set.weight).coerceAtLeast(0.0)
+                    } else {
+                        set.weight
+                    }
+                    set.reps * actualWeight
+                }
                 
                 // Find both types of PRs
                 val (overallPrs, setSpecificPrs) = findPersonalRecords(sets)
                 
                 _uiState.value = _uiState.value.copy(
-                    workout = workoutWithSets?.workout,
+                    workout = workout,
                     sets = sets,
                     totalWeightLifted = totalWeight,
                     overallPrSetIds = overallPrs,
@@ -107,14 +129,29 @@ class WorkoutDetailViewModel(
         }
     }
     
+    fun updateWorkoutDate(newStartTime: Long) {
+        viewModelScope.launch {
+            val currentWorkout = _uiState.value.workout
+            val oldStartTime = currentWorkout?.startTime ?: newStartTime
+            val oldEndTime = currentWorkout?.endTime
+            
+            // Calculate the time shift and apply to endTime to preserve duration
+            val timeShift = newStartTime - oldStartTime
+            val newEndTime = oldEndTime?.let { it + timeShift }
+            
+            repository.updateWorkoutDate(workoutId, newStartTime, newEndTime)
+        }
+    }
+    
     class Factory(
         private val repository: WorkoutRepository,
-        private val workoutId: Long
+        private val workoutId: Long,
+        private val settingsDataStore: SettingsDataStore
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(WorkoutDetailViewModel::class.java)) {
-                return WorkoutDetailViewModel(repository, workoutId) as T
+                return WorkoutDetailViewModel(repository, workoutId, settingsDataStore) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

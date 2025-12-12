@@ -47,13 +47,15 @@ public final class WorkoutDao_Impl implements WorkoutDao {
 
   private final SharedSQLiteStatement __preparedStmtOfDeleteWorkout;
 
+  private final SharedSQLiteStatement __preparedStmtOfUpdateWorkoutDate;
+
   public WorkoutDao_Impl(@NonNull final RoomDatabase __db) {
     this.__db = __db;
     this.__insertionAdapterOfWorkout = new EntityInsertionAdapter<Workout>(__db) {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR ABORT INTO `workouts` (`id`,`startTime`,`endTime`,`isActive`) VALUES (nullif(?, 0),?,?,?)";
+        return "INSERT OR ABORT INTO `workouts` (`id`,`startTime`,`endTime`,`isActive`,`bodyWeight`) VALUES (nullif(?, 0),?,?,?,?)";
       }
 
       @Override
@@ -68,13 +70,14 @@ public final class WorkoutDao_Impl implements WorkoutDao {
         }
         final int _tmp = entity.isActive() ? 1 : 0;
         statement.bindLong(4, _tmp);
+        statement.bindDouble(5, entity.getBodyWeight());
       }
     };
     this.__updateAdapterOfWorkout = new EntityDeletionOrUpdateAdapter<Workout>(__db) {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `workouts` SET `id` = ?,`startTime` = ?,`endTime` = ?,`isActive` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `workouts` SET `id` = ?,`startTime` = ?,`endTime` = ?,`isActive` = ?,`bodyWeight` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -89,7 +92,8 @@ public final class WorkoutDao_Impl implements WorkoutDao {
         }
         final int _tmp = entity.isActive() ? 1 : 0;
         statement.bindLong(4, _tmp);
-        statement.bindLong(5, entity.getId());
+        statement.bindDouble(5, entity.getBodyWeight());
+        statement.bindLong(6, entity.getId());
       }
     };
     this.__preparedStmtOfDeleteWorkout = new SharedSQLiteStatement(__db) {
@@ -97,6 +101,14 @@ public final class WorkoutDao_Impl implements WorkoutDao {
       @NonNull
       public String createQuery() {
         final String _query = "DELETE FROM workouts WHERE id = ?";
+        return _query;
+      }
+    };
+    this.__preparedStmtOfUpdateWorkoutDate = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "UPDATE workouts SET startTime = ?, endTime = ? WHERE id = ?";
         return _query;
       }
     };
@@ -164,6 +176,40 @@ public final class WorkoutDao_Impl implements WorkoutDao {
   }
 
   @Override
+  public Object updateWorkoutDate(final long workoutId, final long newStartTime,
+      final Long newEndTime, final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfUpdateWorkoutDate.acquire();
+        int _argIndex = 1;
+        _stmt.bindLong(_argIndex, newStartTime);
+        _argIndex = 2;
+        if (newEndTime == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindLong(_argIndex, newEndTime);
+        }
+        _argIndex = 3;
+        _stmt.bindLong(_argIndex, workoutId);
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfUpdateWorkoutDate.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Object getWorkoutById(final long id, final Continuation<? super Workout> $completion) {
     final String _sql = "SELECT * FROM workouts WHERE id = ?";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
@@ -180,6 +226,7 @@ public final class WorkoutDao_Impl implements WorkoutDao {
           final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
           final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
           final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+          final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
           final Workout _result;
           if (_cursor.moveToFirst()) {
             final long _tmpId;
@@ -196,7 +243,9 @@ public final class WorkoutDao_Impl implements WorkoutDao {
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfIsActive);
             _tmpIsActive = _tmp != 0;
-            _result = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive);
+            final double _tmpBodyWeight;
+            _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+            _result = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
           } else {
             _result = null;
           }
@@ -224,6 +273,7 @@ public final class WorkoutDao_Impl implements WorkoutDao {
           final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
           final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
           final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+          final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
           final Workout _result;
           if (_cursor.moveToFirst()) {
             final long _tmpId;
@@ -240,7 +290,9 @@ public final class WorkoutDao_Impl implements WorkoutDao {
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfIsActive);
             _tmpIsActive = _tmp != 0;
-            _result = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive);
+            final double _tmpBodyWeight;
+            _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+            _result = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
           } else {
             _result = null;
           }
@@ -267,6 +319,7 @@ public final class WorkoutDao_Impl implements WorkoutDao {
           final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
           final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
           final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+          final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
           final Workout _result;
           if (_cursor.moveToFirst()) {
             final long _tmpId;
@@ -283,7 +336,9 @@ public final class WorkoutDao_Impl implements WorkoutDao {
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfIsActive);
             _tmpIsActive = _tmp != 0;
-            _result = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive);
+            final double _tmpBodyWeight;
+            _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+            _result = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
           } else {
             _result = null;
           }
@@ -314,6 +369,7 @@ public final class WorkoutDao_Impl implements WorkoutDao {
           final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
           final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
           final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+          final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
           final List<Workout> _result = new ArrayList<Workout>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Workout _item;
@@ -331,7 +387,9 @@ public final class WorkoutDao_Impl implements WorkoutDao {
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfIsActive);
             _tmpIsActive = _tmp != 0;
-            _item = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive);
+            final double _tmpBodyWeight;
+            _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+            _item = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
             _result.add(_item);
           }
           return _result;
@@ -361,6 +419,7 @@ public final class WorkoutDao_Impl implements WorkoutDao {
           final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
           final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
           final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+          final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
           final List<Workout> _result = new ArrayList<Workout>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Workout _item;
@@ -378,7 +437,9 @@ public final class WorkoutDao_Impl implements WorkoutDao {
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfIsActive);
             _tmpIsActive = _tmp != 0;
-            _item = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive);
+            final double _tmpBodyWeight;
+            _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+            _item = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
             _result.add(_item);
           }
           return _result;
@@ -414,6 +475,7 @@ public final class WorkoutDao_Impl implements WorkoutDao {
             final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
             final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
             final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+            final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
             final LongSparseArray<ArrayList<WorkoutSet>> _collectionSets = new LongSparseArray<ArrayList<WorkoutSet>>();
             while (_cursor.moveToNext()) {
               final long _tmpKey;
@@ -441,7 +503,9 @@ public final class WorkoutDao_Impl implements WorkoutDao {
               final int _tmp;
               _tmp = _cursor.getInt(_cursorIndexOfIsActive);
               _tmpIsActive = _tmp != 0;
-              _tmpWorkout = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive);
+              final double _tmpBodyWeight;
+              _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+              _tmpWorkout = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
               final ArrayList<WorkoutSet> _tmpSetsCollection;
               final long _tmpKey_1;
               _tmpKey_1 = _cursor.getLong(_cursorIndexOfId);
@@ -482,6 +546,7 @@ public final class WorkoutDao_Impl implements WorkoutDao {
             final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
             final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
             final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+            final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
             final LongSparseArray<ArrayList<WorkoutSet>> _collectionSets = new LongSparseArray<ArrayList<WorkoutSet>>();
             while (_cursor.moveToNext()) {
               final long _tmpKey;
@@ -509,7 +574,9 @@ public final class WorkoutDao_Impl implements WorkoutDao {
               final int _tmp;
               _tmp = _cursor.getInt(_cursorIndexOfIsActive);
               _tmpIsActive = _tmp != 0;
-              _tmpWorkout = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive);
+              final double _tmpBodyWeight;
+              _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+              _tmpWorkout = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
               final ArrayList<WorkoutSet> _tmpSetsCollection;
               final long _tmpKey_1;
               _tmpKey_1 = _cursor.getLong(_cursorIndexOfId);
@@ -552,6 +619,7 @@ public final class WorkoutDao_Impl implements WorkoutDao {
             final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
             final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
             final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+            final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
             final LongSparseArray<ArrayList<WorkoutSet>> _collectionSets = new LongSparseArray<ArrayList<WorkoutSet>>();
             while (_cursor.moveToNext()) {
               final long _tmpKey;
@@ -580,7 +648,9 @@ public final class WorkoutDao_Impl implements WorkoutDao {
               final int _tmp;
               _tmp = _cursor.getInt(_cursorIndexOfIsActive);
               _tmpIsActive = _tmp != 0;
-              _tmpWorkout = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive);
+              final double _tmpBodyWeight;
+              _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+              _tmpWorkout = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
               final ArrayList<WorkoutSet> _tmpSetsCollection;
               final long _tmpKey_1;
               _tmpKey_1 = _cursor.getLong(_cursorIndexOfId);
@@ -651,6 +721,7 @@ public final class WorkoutDao_Impl implements WorkoutDao {
           final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
           final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
           final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+          final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
           final List<Workout> _result = new ArrayList<Workout>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Workout _item;
@@ -668,7 +739,130 @@ public final class WorkoutDao_Impl implements WorkoutDao {
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfIsActive);
             _tmpIsActive = _tmp != 0;
-            _item = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive);
+            final double _tmpBodyWeight;
+            _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+            _item = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object getWorkoutsWithSetsInRange(final long startTime, final long endTime,
+      final Continuation<? super List<WorkoutWithSets>> $completion) {
+    final String _sql = "SELECT * FROM workouts WHERE isActive = 0 AND startTime >= ? AND startTime < ? ORDER BY startTime DESC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 2);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, startTime);
+    _argIndex = 2;
+    _statement.bindLong(_argIndex, endTime);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, true, _cancellationSignal, new Callable<List<WorkoutWithSets>>() {
+      @Override
+      @NonNull
+      public List<WorkoutWithSets> call() throws Exception {
+        __db.beginTransaction();
+        try {
+          final Cursor _cursor = DBUtil.query(__db, _statement, true, null);
+          try {
+            final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+            final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
+            final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
+            final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+            final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
+            final LongSparseArray<ArrayList<WorkoutSet>> _collectionSets = new LongSparseArray<ArrayList<WorkoutSet>>();
+            while (_cursor.moveToNext()) {
+              final long _tmpKey;
+              _tmpKey = _cursor.getLong(_cursorIndexOfId);
+              if (!_collectionSets.containsKey(_tmpKey)) {
+                _collectionSets.put(_tmpKey, new ArrayList<WorkoutSet>());
+              }
+            }
+            _cursor.moveToPosition(-1);
+            __fetchRelationshipworkoutSetsAscomLiftfiercelyDataModelWorkoutSet(_collectionSets);
+            final List<WorkoutWithSets> _result = new ArrayList<WorkoutWithSets>(_cursor.getCount());
+            while (_cursor.moveToNext()) {
+              final WorkoutWithSets _item;
+              final Workout _tmpWorkout;
+              final long _tmpId;
+              _tmpId = _cursor.getLong(_cursorIndexOfId);
+              final long _tmpStartTime;
+              _tmpStartTime = _cursor.getLong(_cursorIndexOfStartTime);
+              final Long _tmpEndTime;
+              if (_cursor.isNull(_cursorIndexOfEndTime)) {
+                _tmpEndTime = null;
+              } else {
+                _tmpEndTime = _cursor.getLong(_cursorIndexOfEndTime);
+              }
+              final boolean _tmpIsActive;
+              final int _tmp;
+              _tmp = _cursor.getInt(_cursorIndexOfIsActive);
+              _tmpIsActive = _tmp != 0;
+              final double _tmpBodyWeight;
+              _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+              _tmpWorkout = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
+              final ArrayList<WorkoutSet> _tmpSetsCollection;
+              final long _tmpKey_1;
+              _tmpKey_1 = _cursor.getLong(_cursorIndexOfId);
+              _tmpSetsCollection = _collectionSets.get(_tmpKey_1);
+              _item = new WorkoutWithSets(_tmpWorkout,_tmpSetsCollection);
+              _result.add(_item);
+            }
+            __db.setTransactionSuccessful();
+            return _result;
+          } finally {
+            _cursor.close();
+            _statement.release();
+          }
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object getAllCompletedWorkouts(final Continuation<? super List<Workout>> $completion) {
+    final String _sql = "SELECT * FROM workouts WHERE isActive = 0 ORDER BY startTime DESC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<Workout>>() {
+      @Override
+      @NonNull
+      public List<Workout> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfStartTime = CursorUtil.getColumnIndexOrThrow(_cursor, "startTime");
+          final int _cursorIndexOfEndTime = CursorUtil.getColumnIndexOrThrow(_cursor, "endTime");
+          final int _cursorIndexOfIsActive = CursorUtil.getColumnIndexOrThrow(_cursor, "isActive");
+          final int _cursorIndexOfBodyWeight = CursorUtil.getColumnIndexOrThrow(_cursor, "bodyWeight");
+          final List<Workout> _result = new ArrayList<Workout>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final Workout _item;
+            final long _tmpId;
+            _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final long _tmpStartTime;
+            _tmpStartTime = _cursor.getLong(_cursorIndexOfStartTime);
+            final Long _tmpEndTime;
+            if (_cursor.isNull(_cursorIndexOfEndTime)) {
+              _tmpEndTime = null;
+            } else {
+              _tmpEndTime = _cursor.getLong(_cursorIndexOfEndTime);
+            }
+            final boolean _tmpIsActive;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsActive);
+            _tmpIsActive = _tmp != 0;
+            final double _tmpBodyWeight;
+            _tmpBodyWeight = _cursor.getDouble(_cursorIndexOfBodyWeight);
+            _item = new Workout(_tmpId,_tmpStartTime,_tmpEndTime,_tmpIsActive,_tmpBodyWeight);
             _result.add(_item);
           }
           return _result;

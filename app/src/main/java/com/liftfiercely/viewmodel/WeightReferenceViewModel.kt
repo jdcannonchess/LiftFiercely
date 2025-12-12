@@ -54,8 +54,9 @@ class WeightReferenceViewModel(
                     overallSetNumber = setNumber,
                     targetReps = targetReps
                 )
-                // Round to nearest 5
-                val roundedWeight = (Math.round(recommendedWeight / 5.0) * 5).toDouble()
+                // Round to nearest increment for this exercise
+                val increment = exercise.weightIncrement
+                val roundedWeight = (Math.round(recommendedWeight / increment) * increment).toDouble()
                 weights[setNumber] = roundedWeight
                 
                 // Fetch set-specific PR

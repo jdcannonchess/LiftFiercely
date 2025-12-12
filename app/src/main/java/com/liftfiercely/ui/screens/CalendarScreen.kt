@@ -54,6 +54,7 @@ import com.liftfiercely.data.repository.PRRecord
 import com.liftfiercely.ui.theme.CoralPrimary
 import com.liftfiercely.ui.theme.WarningAmber
 import com.liftfiercely.viewmodel.CalendarViewModel
+import com.liftfiercely.viewmodel.DayStats
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -113,12 +114,21 @@ fun CalendarScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
+                    // Streak Banner
+                    if (uiState.currentStreak > 0) {
+                        item {
+                            StreakBanner(streak = uiState.currentStreak)
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                    
                     // Calendar
                     item {
                         CalendarCard(
                             year = uiState.currentYear,
                             month = uiState.currentMonth,
                             workoutDays = uiState.workoutDays,
+                            dayStats = uiState.dayStats,
                             onPreviousMonth = { viewModel.previousMonth() },
                             onNextMonth = { viewModel.nextMonth() }
                         )
@@ -196,10 +206,42 @@ fun CalendarScreen(
 }
 
 @Composable
+private fun StreakBanner(streak: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = CoralPrimary.copy(alpha = 0.15f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "🔥",
+                fontSize = 20.sp
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "$streak workout streak!",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = CoralPrimary
+            )
+        }
+    }
+}
+
+@Composable
 private fun CalendarCard(
     year: Int,
     month: Int,
     workoutDays: Set<Int>,
+    dayStats: Map<Int, DayStats>,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit
 ) {
@@ -297,47 +339,74 @@ private fun CalendarCard(
             
             LazyVerticalGrid(
                 columns = GridCells.Fixed(7),
-                modifier = Modifier.height(((totalCells / 7) * 44).dp),
+                modifier = Modifier.height(((totalCells / 7) * 56).dp),
                 userScrollEnabled = false
             ) {
                 items(days) { day ->
                     CalendarDay(
                         day = day,
                         hasWorkout = day != null && day in workoutDays,
-                        isToday = isCurrentMonth && day == currentDay
+                        isToday = isCurrentMonth && day == currentDay,
+                        stats = day?.let { dayStats[it] }
                     )
                 }
             }
             
-            // Legend
-            Spacer(modifier = Modifier.height(16.dp))
+            // Monthly Totals
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            val totalSets = dayStats.values.sumOf { it.totalSets }
+            val totalPounds = dayStats.values.sumOf { it.totalPounds }
+            val formattedPounds = if (totalPounds >= 1000) {
+                "${totalPounds / 1000}k"
+            } else {
+                totalPounds.toString()
+            }
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(CoralPrimary)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Workout Day",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.width(24.dp))
-                
-                Text(
-                    text = "${workoutDays.size} workouts this month",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoralPrimary,
-                    fontWeight = FontWeight.Medium
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "${workoutDays.size}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = CoralPrimary
+                    )
+                    Text(
+                        text = "workouts",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "$totalSets",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = CoralPrimary
+                    )
+                    Text(
+                        text = "sets",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = formattedPounds,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = CoralPrimary
+                    )
+                    Text(
+                        text = "lbs lifted",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -347,48 +416,76 @@ private fun CalendarCard(
 private fun CalendarDay(
     day: Int?,
     hasWorkout: Boolean,
-    isToday: Boolean
+    isToday: Boolean,
+    stats: DayStats?
 ) {
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .padding(2.dp),
-        contentAlignment = Alignment.Center
+            .padding(1.dp)
+            .border(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(4.dp)
+            ),
+        contentAlignment = Alignment.TopCenter
     ) {
         if (day != null) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
+                    .fillMaxSize()
                     .background(
                         when {
-                            hasWorkout -> CoralPrimary
-                            isToday -> MaterialTheme.colorScheme.surfaceVariant
+                            hasWorkout -> CoralPrimary.copy(alpha = 0.15f)
                             else -> Color.Transparent
                         }
                     )
                     .then(
-                        if (isToday && !hasWorkout) {
+                        if (isToday) {
                             Modifier.border(
-                                width = 1.dp,
+                                width = 1.5.dp,
                                 color = CoralPrimary,
-                                shape = CircleShape
+                                shape = RoundedCornerShape(4.dp)
                             )
                         } else {
                             Modifier
                         }
-                    ),
-                contentAlignment = Alignment.Center
+                    )
+                    .padding(2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = day.toString(),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = when {
-                        hasWorkout -> Color.White
+                        hasWorkout -> CoralPrimary
                         else -> MaterialTheme.colorScheme.onSurface
                     },
-                    fontWeight = if (hasWorkout || isToday) FontWeight.Bold else FontWeight.Normal
+                    fontWeight = if (hasWorkout || isToday) FontWeight.Bold else FontWeight.Normal,
+                    fontSize = 10.sp
                 )
+                
+                if (stats != null) {
+                    Text(
+                        text = "${stats.totalSets}s",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 8.sp,
+                        lineHeight = 10.sp
+                    )
+                    val formattedPounds = if (stats.totalPounds >= 1000) {
+                        "${stats.totalPounds / 1000}k"
+                    } else {
+                        stats.totalPounds.toString()
+                    }
+                    Text(
+                        text = formattedPounds,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 8.sp,
+                        lineHeight = 10.sp
+                    )
+                }
             }
         }
     }

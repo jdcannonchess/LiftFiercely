@@ -10,5 +10,6 @@ sealed class NavRoutes(val route: String) {
     }
     object WeightReference : NavRoutes("weight_reference")
     object Calendar : NavRoutes("calendar")
+    object Settings : NavRoutes("settings")
 }
 

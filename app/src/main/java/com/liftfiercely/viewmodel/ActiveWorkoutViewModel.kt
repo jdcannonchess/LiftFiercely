@@ -111,13 +111,22 @@ class ActiveWorkoutViewModel(
                 targetReps = targetReps
             )
             
-            // Round to nearest 5
-            val roundedWeight = (Math.round(recommendedWeight / 5.0) * 5).toDouble()
+            // Round to nearest increment for this exercise
+            val increment = exercise.weightIncrement
+            val roundedWeight = (Math.round(recommendedWeight / increment) * increment).toDouble()
             
             _uiState.value = _uiState.value.copy(
                 recommendedWeight = roundedWeight,
-                weight = if (roundedWeight > 0) roundedWeight.toInt().toString() else ""
+                weight = if (roundedWeight > 0) formatWeight(roundedWeight) else ""
             )
+        }
+    }
+    
+    private fun formatWeight(weight: Double): String {
+        return if (weight % 1.0 == 0.0) {
+            weight.toInt().toString()
+        } else {
+            weight.toString()
         }
     }
     

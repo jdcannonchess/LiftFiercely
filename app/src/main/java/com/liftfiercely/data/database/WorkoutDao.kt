@@ -55,5 +55,18 @@ interface WorkoutDao {
     // Get workouts in a date range (for a specific month)
     @Query("SELECT * FROM workouts WHERE isActive = 0 AND startTime >= :startTime AND startTime < :endTime ORDER BY startTime DESC")
     suspend fun getWorkoutsInRange(startTime: Long, endTime: Long): List<Workout>
+    
+    // Get workouts with their sets in a date range
+    @Transaction
+    @Query("SELECT * FROM workouts WHERE isActive = 0 AND startTime >= :startTime AND startTime < :endTime ORDER BY startTime DESC")
+    suspend fun getWorkoutsWithSetsInRange(startTime: Long, endTime: Long): List<WorkoutWithSets>
+    
+    // Get all completed workouts (for streak calculation)
+    @Query("SELECT * FROM workouts WHERE isActive = 0 ORDER BY startTime DESC")
+    suspend fun getAllCompletedWorkouts(): List<Workout>
+    
+    // Update workout date (shifts both startTime and endTime to preserve duration)
+    @Query("UPDATE workouts SET startTime = :newStartTime, endTime = :newEndTime WHERE id = :workoutId")
+    suspend fun updateWorkoutDate(workoutId: Long, newStartTime: Long, newEndTime: Long?)
 }
 
